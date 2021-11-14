@@ -1,0 +1,7 @@
+<launch>
+        <node pkg="navigation" type="direction" name="direction" />
+        <node pkg="navigation" type="manager" name="manager" />
+        <node pkg="navigation" type="keyboard" name="keyboard" launch-prefix="mate-terminal --tab --title='teclado' –x" />
+        <node pkg="navigation" type="square" name="square" />
+        <node pkg="navigation" type="reactivo" name="reactivo" output="screen" />
+</launch>
