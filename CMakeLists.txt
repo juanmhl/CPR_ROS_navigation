@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   sensor_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -55,11 +56,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  start.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -69,10 +69,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -226,3 +226,6 @@ add_executable(reactivo src/main_reactivo.cpp src/reactivo_class.cpp)
 target_link_libraries(reactivo ${catkin_LIBRARIES})
 add_dependencies(reactivo ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+add_executable(roomba src/main_roomba.cpp src/roomba_class.cpp)
+target_link_libraries(roomba ${catkin_LIBRARIES})
+add_dependencies(roomba ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
