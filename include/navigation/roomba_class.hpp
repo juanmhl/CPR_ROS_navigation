@@ -20,6 +20,8 @@ public:
     
     void spiral();
     
+    void evade();
+    
     ~Roomba_class();
     
     

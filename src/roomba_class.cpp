@@ -40,7 +40,6 @@ void Roomba_class::cmd_velPublish(const double& linear, const double& angular)
 
 void Roomba_class::spiral()
 {
-    //ROS_INFO_STREAM("ENTER SPIRAL METHOD");
     linear = 0.5;
     angular = 2;
     ros::Rate loop_rate(f);
@@ -49,13 +48,74 @@ void Roomba_class::spiral()
     
     while( (ros::ok()) and (nearest>crashThreshold) and (!stopped) )
     {
-        //ROS_INFO_STREAM("INSIDE SPIRAL WHILE");
         angular = angular * 0.985;
         cmd_velPublish(linear, angular);
         loop_rate.sleep();
         ros::spinOnce();
-        //ROS_INFO_STREAM("ROS::OK = " << ros::ok());
     }
+    
+    linear = 0;
+    angular = 0;
+    cmd_velPublish(linear,angular);
+}
+
+void Roomba_class::evade()
+{
+    // laser has 1081 meassurements
+    //   pos <= 539 --> object to the right
+    //   pos  = 540 --> object at center
+    //   pos >= 541 --> object to the left
+    
+    ros::Rate loop_rate(f);
+    
+    // move back 2 steps
+    linear = -0.5; angular = 0;
+    cmd_velPublish(linear,angular); loop_rate.sleep();
+    cmd_velPublish(linear,angular); loop_rate.sleep();
+    
+    // rotate
+    int numGiros = 3 + round(10*((double)rand()/(double)RAND_MAX)); // num of gira msgs to send, random, from 3 to 13, for freq = 5
+    
+    if (pos == 540)
+    {
+        if (((double)rand()/(double)RAND_MAX)<=0.5)
+        {
+            // Rotate left
+            for(int i=0; i<numGiros; i++)
+            {
+                cmd_velPublish(0,1);
+                loop_rate.sleep();
+            }
+        }
+        else
+        {
+            // Rotate right
+            for(int i=0; i<numGiros; i++)
+            {
+                cmd_velPublish(0,-1);
+                loop_rate.sleep();
+            }
+        }
+    }
+    else if (pos<=539)
+    {
+        // Rotate left
+        for(int i=0; i<numGiros; i++)
+        {
+            cmd_velPublish(0,1);
+            loop_rate.sleep();
+        }
+    }
+    else
+    {
+        // Rotate right
+        for(int i=0; i<numGiros; i++)
+        {
+            cmd_velPublish(0,-1);
+            loop_rate.sleep();
+        }
+    }
+    
 }
 
 Roomba_class::~Roomba_class()

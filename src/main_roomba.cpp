@@ -6,7 +6,8 @@ int main(int argc, char** argv)
     
     Roomba_class node;
     
-    node.spiral();    
+    node.spiral();
+    node.evade();
     
     return 1;
 }
