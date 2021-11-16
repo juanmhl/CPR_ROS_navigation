@@ -138,6 +138,67 @@ void Roomba_class::straight()
     cmd_velPublish(linear,angular);
 }
 
+void Roomba_class::wallToTheRight()
+{
+    ros::Rate loop_rate(50);
+    linear = 0;
+    angular = 0;
+    
+    while( (pos<179) or (pos>182) )
+    {
+        ros::spinOnce();                        // read laser
+        if (pos>190)        {angular = 0.5;}
+        else if (pos>182)   {angular = 0.02;}    // turn left
+        else if (pos<170)   {angular = -0.5;}
+        else if (pos<179)   {angular = -0.02;}   // turn right
+        else                {angular = 0;}      // don't turn
+        cmd_velPublish(linear,angular);
+        loop_rate.sleep();
+    }
+}
+
+void Roomba_class::getAway()
+{
+    ros::Rate loop_rate(5);
+    
+    for(int i=0; i<7; i++) {cmd_velPublish(0,1);        loop_rate.sleep();}
+    for(int i=0; i<2; i++) {cmd_velPublish(0.25,0);     loop_rate.sleep();}
+    for(int i=0; i<7; i++) {cmd_velPublish(0,-1);       loop_rate.sleep();}
+    
+}
+
+void Roomba_class::getCloser()
+{
+    ros::Rate loop_rate(5);
+    
+    for(int i=0; i<7; i++) {cmd_velPublish(0,-1);       loop_rate.sleep();}
+    for(int i=0; i<2; i++) {cmd_velPublish(0.25,0);     loop_rate.sleep();}
+    for(int i=0; i<7; i++) {cmd_velPublish(0,1);        loop_rate.sleep();}
+    
+}
+
+void Roomba_class::followWall()
+{
+    ros::Rate loop_rate(f);
+    double in_threshold = 0.4;
+    double out_threshold = 0.6;
+    
+    while( (ros::ok()) and (!stopped) )
+    {
+        ros::spinOnce();
+        
+        if (nearest > out_threshold) {getCloser();}
+        else if (nearest < in_threshold) {getAway();}
+        
+        if ( (pos<179) or (pos>182) ) {wallToTheRight();}
+        
+        cmd_velPublish(1,0);
+        loop_rate.sleep();
+    }
+    
+}
+
+
 Roomba_class::~Roomba_class()
 {
     ROS_INFO_STREAM("Leaving gently...");

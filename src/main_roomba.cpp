@@ -8,7 +8,8 @@ int main(int argc, char** argv)
     
     node.spiral();
     node.evade();
-    while(node.crashes<5) {node.straight(); node.evade();}
+    while(node.crashes<1) {node.straight(); node.evade();}
+    node.followWall();
     
     return 1;
 }

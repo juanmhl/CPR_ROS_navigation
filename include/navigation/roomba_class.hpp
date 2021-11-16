@@ -24,11 +24,17 @@ public:
     
     void straight();
     
+    void followWall();
+    
     ~Roomba_class();
     
     unsigned int crashes = 0;
     
 private:
+    
+    void getCloser();
+    void getAway();
+    void wallToTheRight();
     
     ros::NodeHandle nh;
     
