@@ -22,8 +22,11 @@ public:
     
     void evade();
     
+    void straight();
+    
     ~Roomba_class();
     
+    unsigned int crashes = 0;
     
 private:
     

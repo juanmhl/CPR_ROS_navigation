@@ -118,6 +118,26 @@ void Roomba_class::evade()
     
 }
 
+void Roomba_class::straight()
+{
+    linear = 0.6;
+    angular = 0;
+    ros::Rate loop_rate(f);
+    ros::spinOnce();
+    
+    while( (ros::ok()) and (nearest>crashThreshold) and (!stopped) )
+    {
+        ros::spinOnce();
+        cmd_velPublish(linear, angular);
+        loop_rate.sleep();
+    }
+    
+    crashes++;
+    linear = 0;
+    angular = 0;
+    cmd_velPublish(linear,angular);
+}
+
 Roomba_class::~Roomba_class()
 {
     ROS_INFO_STREAM("Leaving gently...");
