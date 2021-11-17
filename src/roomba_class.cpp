@@ -120,7 +120,7 @@ void Roomba_class::evade()
 
 void Roomba_class::straight()
 {
-    linear = 0.6;
+    linear = 0.8;
     angular = 0;
     ros::Rate loop_rate(f);
     ros::spinOnce();
@@ -140,17 +140,17 @@ void Roomba_class::straight()
 
 void Roomba_class::wallToTheRight()
 {
-    ros::Rate loop_rate(50);
+    ros::Rate loop_rate(10); // max f of base_scan
     linear = 0;
     angular = 0;
     
-    while( (pos<179) or (pos>182) )
+    while( (pos<170) or (pos>191) )
     {
         ros::spinOnce();                        // read laser
-        if (pos>190)        {angular = 0.5;}
-        else if (pos>182)   {angular = 0.02;}    // turn left
-        else if (pos<170)   {angular = -0.5;}
-        else if (pos<179)   {angular = -0.02;}   // turn right
+        if (pos>200)        {angular = 0.5;}
+        else if (pos>191)   {angular = 0.05;}    // turn left
+        else if (pos<160)   {angular = -0.5;}
+        else if (pos<170)   {angular = -0.05;}   // turn right
         else                {angular = 0;}      // don't turn
         cmd_velPublish(linear,angular);
         loop_rate.sleep();
@@ -179,9 +179,9 @@ void Roomba_class::getCloser()
 
 void Roomba_class::followWall()
 {
-    ros::Rate loop_rate(f);
+    ros::Rate loop_rate(10);
     double in_threshold = 0.4;
-    double out_threshold = 0.6;
+    double out_threshold = 0.55;
     
     while( (ros::ok()) and (!stopped) )
     {
@@ -190,9 +190,9 @@ void Roomba_class::followWall()
         if (nearest > out_threshold) {getCloser();}
         else if (nearest < in_threshold) {getAway();}
         
-        if ( (pos<179) or (pos>182) ) {wallToTheRight();}
+        if ( (pos<170) or (pos>191) ) {wallToTheRight();}
         
-        cmd_velPublish(1,0);
+        cmd_velPublish(0.8,0);
         loop_rate.sleep();
     }
     
