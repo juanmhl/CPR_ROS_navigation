@@ -6,6 +6,7 @@ Roomba_class::Roomba_class()
     pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1000);                       // publica a stage_ros
     serverStart = nh.advertiseService("start",&Roomba_class::start_function,this);
     stopped=true;
+    serverGetCrashes = nh.advertiseService("getCrashes",&Roomba_class::getCrashes_function,this);
 }
 
 void Roomba_class::base_scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
@@ -26,6 +27,18 @@ bool Roomba_class::start_function(navigation::start::Request& req, navigation::s
     ROS_INFO_STREAM("Start fnc activated");
     return true;
 }
+
+bool Roomba_class::getCrashes_function(navigation::getCrashes::Request& req, navigation::getCrashes::Response& res)
+{
+    res.right = crashRight;
+    res.left = crashLeft;
+    res.center = crashCenter;
+    
+    ROS_INFO_STREAM("LEFT: " << res.left << "  RIGHT: " << res.right << "  CENTER: " << res.center);
+    
+    return true;
+}
+
 
 void Roomba_class::cmd_velPublish(const double& linear, const double& angular)
 {
@@ -53,6 +66,8 @@ void Roomba_class::spiral()
         loop_rate.sleep();
         ros::spinOnce();
     }
+    
+    updateCrash();
     
     linear = 0;
     angular = 0;
@@ -132,6 +147,8 @@ void Roomba_class::straight()
         loop_rate.sleep();
     }
     
+    updateCrash();
+    
     crashes++;
     linear = 0;
     angular = 0;
@@ -198,8 +215,14 @@ void Roomba_class::followWall()
     
 }
 
-
 Roomba_class::~Roomba_class()
 {
     ROS_INFO_STREAM("Leaving gently...");
+}
+
+void Roomba_class::updateCrash()
+{
+    if (pos = 540) {crashCenter++;}
+    else if (pos<540) {crashRight++;}
+    else {crashLeft++;}
 }

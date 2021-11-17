@@ -11,5 +11,5 @@ int main(int argc, char** argv)
     while(node.crashes<1) {node.straight(); node.evade();}
     node.followWall();
     
-    return 1;
+    return 0;
 }

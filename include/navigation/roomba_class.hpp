@@ -4,6 +4,7 @@
 #include "sensor_msgs/LaserScan.h"
 
 #include "navigation/start.h"
+#include "navigation/getCrashes.h"
 
 class Roomba_class
 {
@@ -15,6 +16,9 @@ public:
     
     bool start_function(navigation::start::Request &req,
                         navigation::start::Response &res);
+    
+    bool getCrashes_function(navigation::getCrashes::Request &req,
+                             navigation::getCrashes::Response &res);
     
     void cmd_velPublish(const double & linear, const double & angular);
     
@@ -43,6 +47,7 @@ private:
     ros::Subscriber sub;
     
     ros::ServiceServer serverStart;
+    ros::ServiceServer serverGetCrashes;
     
     bool stopped;
     
@@ -55,5 +60,11 @@ private:
     double linear = 0, angular = 0;
     
     double f = 5;   // message publishing frequency
+    
+    int crashRight = 0;
+    int crashLeft = 0;
+    int crashCenter = 0;
+    
+    void updateCrash();
     
 };
