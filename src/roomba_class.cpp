@@ -34,7 +34,7 @@ bool Roomba_class::getCrashes_function(navigation::getCrashes::Request& req, nav
     res.left = crashLeft;
     res.center = crashCenter;
     
-    ROS_INFO_STREAM("LEFT: " << res.left << "  RIGHT: " << res.right << "  CENTER: " << res.center);
+    // ROS_INFO_STREAM("LEFT: " << res.left << "  RIGHT: " << res.right << "  CENTER: " << res.center);
     
     return true;
 }
@@ -61,7 +61,7 @@ void Roomba_class::spiral()
     
     while( (ros::ok()) and (nearest>crashThreshold) and (!stopped) )
     {
-        angular = angular * 0.985;
+        angular = angular * 0.99;
         cmd_velPublish(linear, angular);
         loop_rate.sleep();
         ros::spinOnce();
@@ -89,7 +89,8 @@ void Roomba_class::evade()
     cmd_velPublish(linear,angular); loop_rate.sleep();
     
     // rotate
-    int numGiros = 3 + round(10*((double)rand()/(double)RAND_MAX)); // num of gira msgs to send, random, from 3 to 13, for freq = 5
+    //int numGiros = 3 + round(10*((double)rand()/(double)RAND_MAX)); // num of gira msgs to send, random, from 3 to 13, for freq = 5
+    int numGiros = 6 + round(20*((double)rand()/(double)RAND_MAX)); // num of gira msgs to send, random, from 6 to 26, for freq = 10
     
     if (pos == 540)
     {
@@ -160,8 +161,9 @@ void Roomba_class::wallToTheRight()
     ros::Rate loop_rate(10); // max f of base_scan
     linear = 0;
     angular = 0;
+    int count = 0;
     
-    while( (pos<170) or (pos>191) )
+    while( ((pos<170) or (pos>191)) and (count < 40) )
     {
         ros::spinOnce();                        // read laser
         if (pos>200)        {angular = 0.5;}
@@ -171,6 +173,7 @@ void Roomba_class::wallToTheRight()
         else                {angular = 0;}      // don't turn
         cmd_velPublish(linear,angular);
         loop_rate.sleep();
+        count++;
     }
 }
 
@@ -197,8 +200,8 @@ void Roomba_class::getCloser()
 void Roomba_class::followWall()
 {
     ros::Rate loop_rate(10);
-    double in_threshold = 0.4;
-    double out_threshold = 0.55;
+    double in_threshold = 0.43;
+    double out_threshold = 0.60;
     
     while( (ros::ok()) and (!stopped) )
     {
@@ -222,7 +225,7 @@ Roomba_class::~Roomba_class()
 
 void Roomba_class::updateCrash()
 {
-    if (pos = 540) {crashCenter++;}
+    if (pos == 540) {crashCenter++;}
     else if (pos<540) {crashRight++;}
     else {crashLeft++;}
 }
