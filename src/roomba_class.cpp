@@ -2,12 +2,21 @@
 
 Roomba_class::Roomba_class()
 {
-    sub = nh.subscribe("base_scan", 1, &Roomba_class::base_scanCallback, this);     // suscrito a topic del laser
-    pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1000);                       // publica a stage_ros
+    sub = nh.subscribe("base_scan", 1, &Roomba_class::base_scanCallback, this);     // suscribed to laser topic
+    pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1000);                       // publish to stage_ros
     serverStart = nh.advertiseService("start",&Roomba_class::start_function,this);
     stopped=true;
     serverGetCrashes = nh.advertiseService("getCrashes",&Roomba_class::getCrashes_function,this);
 }
+
+Roomba_class::~Roomba_class()
+{
+    ROS_INFO_STREAM("Leaving gently...");
+}
+
+// ----------------------------------------------------------------------------------------------------- //
+// -------------------------------- TOPICS CALLBACK AND PUBLISHING ------------------------------------- //
+// ----------------------------------------------------------------------------------------------------- //
 
 void Roomba_class::base_scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
@@ -21,9 +30,24 @@ void Roomba_class::base_scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg
     ROS_INFO_STREAM("Nearest obstacle at: " << nearest << " at vector position: " << pos);
 }
 
+void Roomba_class::cmd_velPublish(const double& linear, const double& angular)
+{
+    geometry_msgs::Twist vel_msg;
+    
+    vel_msg.linear.x = linear;
+    vel_msg.angular.z = angular;
+    
+    ROS_INFO_STREAM("Value: " << vel_msg.linear.x << " " << vel_msg.angular.z);
+    pub.publish(vel_msg);
+}
+
+// ----------------------------------------------------------------------------------------------------- //
+// ----------------------------------------- SERVICES METHODS ------------------------------------------ //
+// ----------------------------------------------------------------------------------------------------- //
+
 bool Roomba_class::start_function(navigation::start::Request& req, navigation::start::Response& res)
 {
-    stopped = false;
+    stopped = false;    // Start movement
     ROS_INFO_STREAM("Start fnc activated");
     return true;
 }
@@ -39,17 +63,16 @@ bool Roomba_class::getCrashes_function(navigation::getCrashes::Request& req, nav
     return true;
 }
 
-
-void Roomba_class::cmd_velPublish(const double& linear, const double& angular)
+void Roomba_class::updateCrash()
 {
-    geometry_msgs::Twist vel_msg;
-    
-    vel_msg.linear.x = linear;
-    vel_msg.angular.z = angular;
-    
-    ROS_INFO_STREAM("Value: " << vel_msg.linear.x << " " << vel_msg.angular.z);
-    pub.publish(vel_msg);
+    if (pos == 540) {crashCenter++;}
+    else if (pos<540) {crashRight++;}
+    else {crashLeft++;}
 }
+
+// ----------------------------------------------------------------------------------------------------- //
+// -------------------------------------- BASIC MOVEMENT METHODS --------------------------------------- //
+// ----------------------------------------------------------------------------------------------------- //
 
 void Roomba_class::spiral()
 {
@@ -57,20 +80,21 @@ void Roomba_class::spiral()
     angular = 2;
     ros::Rate loop_rate(f);
     
-    while(stopped) {ros::spinOnce(); loop_rate.sleep();}
+    while(stopped) {ros::spinOnce(); loop_rate.sleep();}  // Read LaserScan until start service is called
     
     while( (ros::ok()) and (nearest>crashThreshold) and (!stopped) )
     {
+        // Constant linear velocity and decreasing angular velocity results in spiral motion
         angular = angular * 0.99;
         cmd_velPublish(linear, angular);
         loop_rate.sleep();
-        ros::spinOnce();
+        ros::spinOnce();  // attend LaserScan callback
     }
     
-    updateCrash();
+    updateCrash();  // robot exits while loop to evade imminent crash
     
-    linear = 0;
-    angular = 0;
+    // Robot stops
+    linear = 0; angular = 0;
     cmd_velPublish(linear,angular);
 }
 
@@ -89,11 +113,12 @@ void Roomba_class::evade()
     cmd_velPublish(linear,angular); loop_rate.sleep();
     
     // rotate
-    //int numGiros = 3 + round(10*((double)rand()/(double)RAND_MAX)); // num of gira msgs to send, random, from 3 to 13, for freq = 5
-    int numGiros = 6 + round(20*((double)rand()/(double)RAND_MAX)); // num of gira msgs to send, random, from 6 to 26, for freq = 10
+    //int numGiros = 3 + round(10*((double)rand()/(double)RAND_MAX));  // num of turn msgs to send, random, from 3 to 13, for freq = 5
+    int numGiros = 6 + round(20*((double)rand()/(double)RAND_MAX));  // num of turn msgs to send, random, from 6 to 26, for freq = 10
     
-    if (pos == 540)
+    if (pos == 540)  // Obstacle just in front of the robot
     {
+        // Random turn to the left or the right
         if (((double)rand()/(double)RAND_MAX)<=0.5)
         {
             // Rotate left
@@ -113,7 +138,7 @@ void Roomba_class::evade()
             }
         }
     }
-    else if (pos<=539)
+    else if (pos<=539)  // Obstacle to the right -> turn left
     {
         // Rotate left
         for(int i=0; i<numGiros; i++)
@@ -122,7 +147,7 @@ void Roomba_class::evade()
             loop_rate.sleep();
         }
     }
-    else
+    else  // Obstacle to the left -> turn right
     {
         // Rotate right
         for(int i=0; i<numGiros; i++)
@@ -148,42 +173,38 @@ void Roomba_class::straight()
         loop_rate.sleep();
     }
     
-    updateCrash();
+    updateCrash();  // robot exits while loop to evade imminent crash
+    crashes++;      // this variable is only updated in this method
     
-    crashes++;
-    linear = 0;
-    angular = 0;
+    // Robot stops
+    linear = 0; angular = 0;
     cmd_velPublish(linear,angular);
 }
 
-void Roomba_class::wallToTheRight()
-{
-    ros::Rate loop_rate(10); // max f of base_scan
-    linear = 0;
-    angular = 0;
-    int count = 0;
-    
-    while( ((pos<170) or (pos>191)) and (count < 40) )
-    {
-        ros::spinOnce();                        // read laser
-        if (pos>200)        {angular = 0.5;}
-        else if (pos>191)   {angular = 0.05;}    // turn left
-        else if (pos<160)   {angular = -0.5;}
-        else if (pos<170)   {angular = -0.05;}   // turn right
-        else                {angular = 0;}      // don't turn
-        cmd_velPublish(linear,angular);
-        loop_rate.sleep();
-        count++;
-    }
-}
+// -------------------- Wall following --------------------- //
 
-void Roomba_class::getAway()
+void Roomba_class::followWall()
 {
-    ros::Rate loop_rate(5);
+    ros::Rate loop_rate(10);
+    double in_threshold = 0.43;
+    double out_threshold = 0.60;
     
-    for(int i=0; i<7; i++) {cmd_velPublish(0,1);        loop_rate.sleep();}
-    for(int i=0; i<2; i++) {cmd_velPublish(0.25,0);     loop_rate.sleep();}
-    for(int i=0; i<7; i++) {cmd_velPublish(0,-1);       loop_rate.sleep();}
+    while( (ros::ok()) and (!stopped) )
+    {
+        ros::spinOnce();  // attend LaserScan callback
+        
+        // Correct distance to the wall
+        if (nearest > out_threshold) {getCloser();}     
+        else if (nearest < in_threshold) {getAway();}
+        
+        // Put wall to the right of the robot
+        if ( (pos<170) or (pos>191) ) {wallToTheRight();}
+        
+        // Advance
+        cmd_velPublish(0.8,0);
+        
+        loop_rate.sleep();
+    }
     
 }
 
@@ -197,35 +218,33 @@ void Roomba_class::getCloser()
     
 }
 
-void Roomba_class::followWall()
+void Roomba_class::getAway()
 {
-    ros::Rate loop_rate(10);
-    double in_threshold = 0.43;
-    double out_threshold = 0.60;
+    ros::Rate loop_rate(5);
     
-    while( (ros::ok()) and (!stopped) )
+    for(int i=0; i<7; i++) {cmd_velPublish(0,1);        loop_rate.sleep();}
+    for(int i=0; i<2; i++) {cmd_velPublish(0.25,0);     loop_rate.sleep();}
+    for(int i=0; i<7; i++) {cmd_velPublish(0,-1);       loop_rate.sleep();}
+    
+}
+
+void Roomba_class::wallToTheRight()
+{
+    ros::Rate loop_rate(10); // max f of base_scan
+    linear = 0;
+    angular = 0;
+    int count = 0;
+    
+    while( ((pos<170) or (pos>191)) and (count < 40) )  // This action will take up to 4 seconds
     {
-        ros::spinOnce();
-        
-        if (nearest > out_threshold) {getCloser();}
-        else if (nearest < in_threshold) {getAway();}
-        
-        if ( (pos<170) or (pos>191) ) {wallToTheRight();}
-        
-        cmd_velPublish(0.8,0);
+        ros::spinOnce();                        // attend LaserScan callback
+        if (pos>200)        {angular = 0.5;}    // wall far to the front            --> turn left, fast
+        else if (pos>191)   {angular = 0.05;}   // wall not too much to the front   --> turn left, slow
+        else if (pos<160)   {angular = -0.5;}   // wall far to the back             --> turn right, fast
+        else if (pos<170)   {angular = -0.05;}  // wall not too much to the back    --> turn left, slow
+        else                {angular = 0;}      // don't turn
+        cmd_velPublish(linear,angular);
         loop_rate.sleep();
+        count++;
     }
-    
-}
-
-Roomba_class::~Roomba_class()
-{
-    ROS_INFO_STREAM("Leaving gently...");
-}
-
-void Roomba_class::updateCrash()
-{
-    if (pos == 540) {crashCenter++;}
-    else if (pos<540) {crashRight++;}
-    else {crashLeft++;}
 }
