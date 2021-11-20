@@ -2,7 +2,8 @@
 
 Roomba_class::Roomba_class()
 {
-    sub = nh.subscribe("base_scan", 1, &Roomba_class::base_scanCallback, this);     // suscribed to laser topic
+    sub = nh.subscribe("base_scan", 1, &Roomba_class::base_scanCallback, this);     // subscribed to laser topic
+    subPose = nh.subscribe("base_pose_ground_truth", 1, &Roomba_class::base_pose_ground_truthCallback, this);  // subscribed to pose topic
     pub = nh.advertise<geometry_msgs::Twist>("cmd_vel",1000);                       // publish to stage_ros
     serverStart = nh.advertiseService("start",&Roomba_class::start_function,this);
     stopped=true;
@@ -26,8 +27,15 @@ void Roomba_class::base_scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg
     nearest = *min_it;
     pos=std::distance(msg->ranges.begin(),min_it);
     
-    ROS_INFO_STREAM("Total meassurements: " << n_ranges);
-    ROS_INFO_STREAM("Nearest obstacle at: " << nearest << " at vector position: " << pos);
+    //ROS_INFO_STREAM("Total meassurements: " << n_ranges);
+    //ROS_INFO_STREAM("Nearest obstacle at: " << nearest << " at vector position: " << pos);
+}
+
+void Roomba_class::base_pose_ground_truthCallback(const nav_msgs::Odometry::ConstPtr& msg)
+{
+    poseX = msg->pose.pose.position.x;
+    poseY = msg->pose.pose.position.y;
+    //ROS_INFO_STREAM("POSE CALLBACK: " << poseX << " " << poseY);
 }
 
 void Roomba_class::cmd_velPublish(const double& linear, const double& angular)
@@ -37,7 +45,7 @@ void Roomba_class::cmd_velPublish(const double& linear, const double& angular)
     vel_msg.linear.x = linear;
     vel_msg.angular.z = angular;
     
-    ROS_INFO_STREAM("Value: " << vel_msg.linear.x << " " << vel_msg.angular.z);
+    //ROS_INFO_STREAM("Value: " << vel_msg.linear.x << " " << vel_msg.angular.z);
     pub.publish(vel_msg);
 }
 
@@ -181,17 +189,35 @@ void Roomba_class::straight()
     cmd_velPublish(linear,angular);
 }
 
-// -------------------- Wall following --------------------- //
+// ------------------------------- Wall following -------------------------------------- //
 
 void Roomba_class::followWall()
 {
     ros::Rate loop_rate(10);
     double in_threshold = 0.43;
     double out_threshold = 0.60;
+    bool inicio = true;
+    int count = 0;
     
     while( (ros::ok()) and (!stopped) )
     {
-        ros::spinOnce();  // attend LaserScan callback
+        ros::spinOnce();  // attend LaserScan (and pose) callback
+        
+        if(inicio)  // set initial pose
+        {
+            poseX_orig = poseX;
+            poseY_orig = poseY;
+            ROS_INFO_STREAM("ORIG POSE ASIGNATION:  " << poseX_orig << " " << poseY_orig);
+            inicio = false;
+        }
+        else if( (sqrt(pow(poseX-poseX_orig,2)+pow(poseY-poseY_orig,2))<0.5) and (count>150) )  // time has passed and robot is near original pose
+        {
+            in_threshold += 0.3;
+            out_threshold += 0.3;
+            ROS_INFO_STREAM("NEW THRESHOLDS: " << in_threshold << "  |  " << out_threshold);
+            inicio = true;
+            count = 0;
+        }
         
         // Correct distance to the wall
         if (nearest > out_threshold) {getCloser();}     
@@ -201,9 +227,10 @@ void Roomba_class::followWall()
         if ( (pos<170) or (pos>191) ) {wallToTheRight();}
         
         // Advance
-        cmd_velPublish(0.8,0);
+        cmd_velPublish(0.8,0); loop_rate.sleep();
+        cmd_velPublish(0.8,0); loop_rate.sleep();
         
-        loop_rate.sleep();
+        count++;
     }
     
 }

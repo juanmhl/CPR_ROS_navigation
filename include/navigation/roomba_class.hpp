@@ -2,6 +2,8 @@
 #include "std_msgs/String.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
+#include "nav_msgs/Odometry.h"
+#include <math.h>
 
 #include "navigation/start.h"
 #include "navigation/getCrashes.h"
@@ -15,6 +17,7 @@ public:
     
     // Topics
     void base_scanCallback(const sensor_msgs::LaserScan::ConstPtr & msg);
+    void base_pose_ground_truthCallback(const nav_msgs::Odometry::ConstPtr & msg);
     void cmd_velPublish(const double & linear, const double & angular);
     
     // Services
@@ -39,6 +42,7 @@ private:
     ros::NodeHandle nh;
     ros::Publisher pub;
     ros::Subscriber sub;
+    ros::Subscriber subPose;
     
     // Service servers
     ros::ServiceServer serverStart;
@@ -50,6 +54,12 @@ private:
     int n_ranges = -1;      // laserScan vector length
     double nearest = -1;    // nearest distance detected by the laserScan
     int pos = -1;           // pos of the nearest
+    
+    // Pose of the robot
+    double poseX = 0;
+    double poseY = 0;
+    double poseX_orig = 0;
+    double poseY_orig = 0;
     
     double crashThreshold = 0.45;
     
